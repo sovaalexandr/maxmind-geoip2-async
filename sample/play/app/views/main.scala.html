@@ -1,0 +1,17 @@
+@(title: String)(content: Html)
+
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>@title</title>
+    </head>
+    <body>
+        @content
+        <p>
+            @* Required by https://dev.maxmind.com/geoip/geoip2/geolite2/#License *@
+            This product includes GeoLite2 data created by MaxMind, available from
+        <a href="http://www.maxmind.com">http://www.maxmind.com</a>.
+        </p>
+    </body>
+</html>

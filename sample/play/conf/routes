@@ -1,0 +1,8 @@
+# Routes
+# This file defines all application routes (Higher priority routes first)
+# ~~~~
+
+# Home page
+GET        /                          controllers.Application.index()
+GET        /java/:addr                controllers.GeoJava.getGeolocation(addr: String)
+GET        /scala/:addr               controllers.GeoScala.getGeolocation(addr: String)

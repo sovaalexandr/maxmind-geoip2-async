@@ -1,0 +1,133 @@
+package com.sovaalexandr.maxmind.geoip2.database.download
+
+import java.io.File
+import java.time.{ZoneId, ZonedDateTime}
+
+import com.sovaalexandr.maxmind.geoip2.database.download.DownloadRequest.Settings
+import org.mockito.Mockito._
+import org.mockito.ArgumentMatchers._
+import com.sovaalexandr.maxmind.geoip2.database.{CurrentDatabaseFile, DatabaseFile, DatabaseFileEvent}
+import org.scalatest.TestData
+import org.scalatest.mockito.MockitoSugar
+import org.scalatestplus.play.PlaySpec
+import org.scalatestplus.play.guice.GuiceOneAppPerTest
+import play.api.Configuration
+import play.api.test.{DefaultAwaitTimeout, FutureAwaits}
+
+import scala.language.implicitConversions
+
+class HttpDatabaseFetchTest extends PlaySpec with GuiceOneAppPerTest with DefaultAwaitTimeout with FutureAwaits with MockitoSugar {
+  private val lastModified = ZonedDateTime.of(2017, 10, 11, 23, 35, 15, 42, ZoneId.systemDefault())
+  private val testFile = mock[File]
+  when(testFile.isFile) thenReturn true
+  when(testFile.getPath) thenReturn s"${System.getProperty("java.io.tmpdir")}/GeoLite2-City.mmdb"
+
+  private def configurations = Map(
+    "fetch an encrypted DB file without cache" -> Configuration(
+      "geolocation.geoip2db.dbUrl" -> "/database/GeoLite2-City.mmdb",
+      "geolocation.geoip2db.compression.type" -> "NONE"
+    ),
+    "not fetch an encrypted DB file if cache is still valid" -> Configuration(
+      "geolocation.geoip2db.dbUrl" -> "/database/GeoLite2-City.mmdb",
+      "geolocation.geoip2db.compression.type" -> "NONE"
+    ),
+    s"fail with DatabaseDownloadFailed exception if download Content-Type is not application/octet-stream" -> Configuration(
+      "geolocation.geoip2db.dbUrl" -> "/database/GeoLite2-City.css",
+      "geolocation.geoip2db.compression.type" -> "NONE"
+    ),
+    s"fail with DatabaseDownloadFailed exception if download not completes successfully" -> Configuration(
+      "geolocation.geoip2db.dbUrl" -> "/database/uri/not/exist",
+      "geolocation.geoip2db.compression.type" -> "NONE"
+    )
+  ).withDefaultValue(Configuration()) // Avoiding NoSuchElementException
+
+  // noinspection ScalaDeprecation - IDEA thinks that method Router.from is deprecated while it's not.
+  // Deprecated is object Router.Tags that is coded above Router.from
+  implicit override def newAppForTest(testData: TestData): Application =
+    new GuiceApplicationBuilder().configure(configurations(testData.text)).additionalRouter(
+      Router.from({
+        case GET(requestHeader) if (requestHeader.path == "/database/GeoLite2-City.mmdb")
+          && requestHeader.headers.get(HeaderNames.IF_NONE_MATCH).contains("testETag") =>
+          Action { _: Request[AnyContent] => Results.NotModified }
+        case GET(p"/database/GeoLite2-City.mmdb") =>
+          Action {
+            _: Request[AnyContent] => Results.Ok.as(MimeTypes.BINARY)
+              .withHeaders((HeaderNames.ETAG, "testETag"))
+              .withDateHeaders((HeaderNames.LAST_MODIFIED, lastModified))
+          }
+        case GET(p"/database/GeoLite2-City.css") =>
+          Action {
+            _: Request[AnyContent] => Results.Ok.as(MimeTypes.CSS)
+          }
+      })
+    ).build()
+
+  /* Need this spike-leg because:
+   * 1. Play natively (Server.withApplication api method) starts passed Application (not expects that application is
+   *    already started) and if Application is already started play.api.Play.start(app) hook tries to stop the same Application
+   *    that it starts.
+   * 2. Have to use some low-level API that is based on Application because neither Server.withRouter nor
+   *    Server.withRouterFromComponents nor Server.withApplicationFromContext not allows to use injector of Application
+   *    that being built at those methods and starting a new separate application stops a server one.
+   */
+  def serverWithApplication[T](application: Application, config: ServerConfig = ServerConfig(port = Some(0), mode = Mode.Test))(block: Port => T)(implicit provider: ServerProvider): T = {
+    val server = provider.createServer(config, application)
+    try {
+      block(new Port((server.httpPort orElse server.httpsPort).get))
+    } finally {
+      server.stop()
+    }
+  }
+
+  def withDbFileClient[T](block: (HttpDatabaseFetch, Int) => Any): Any = {
+    serverWithApplication(app){ implicit port =>
+      WsTestClient.withClient { client =>
+        val target = new HttpDatabaseFetch(
+          new DownloadRequest(
+            client,
+            app.injector.instanceOf[Settings],
+            app.injector.instanceOf[RememberedHeadersFilter]
+          ),
+          app.injector.instanceOf[CompressedBy]
+        )(app.materializer)
+
+        block(target, port.value)
+      }
+    }
+  }
+
+  "HttpDatabaseFetch" when {
+    "file is present" should {
+      "fetch an encrypted DB file without cache" in withDbFileClient((httpDatabaseFetch: HttpDatabaseFetch, _: Int) => {
+        val databaseFile = await(httpDatabaseFetch.fetchNow(testFile))
+        val probe = mock[CurrentDatabaseFile]
+        databaseFile(probe) mustBe null
+        verify(probe).gotNewOne(any[File])
+        verify(probe, never()).stillFine()
+      })
+
+      "not fetch an encrypted DB file if cache is still valid" in withDbFileClient((httpDatabaseFetch: HttpDatabaseFetch, port: Int) => {
+        val cacheApi = app.injector.instanceOf[SyncCacheApi]
+        cacheApi.set(s"http://localhost:$port/database/GeoLite2-City.mmdb", Map(
+          HeaderNames.ETAG -> Seq("testETag"),
+          HeaderNames.LAST_MODIFIED -> Seq(lastModified.format(ResponseHeader.httpDateFormat))
+        ))
+        val databaseFile = await(httpDatabaseFetch.fetchNow(testFile))
+        val probe = mock[CurrentDatabaseFile]
+        databaseFile(probe) mustBe null
+        verify(probe, never()).gotNewOne(any[File])
+        verify(probe).stillFine()
+      })
+
+      s"fail with DatabaseDownloadFailed exception if download ${HeaderNames.CONTENT_TYPE} is not ${MimeTypes.BINARY}" in withDbFileClient((httpDatabaseFetch: HttpDatabaseFetch, _: Int) => {
+        val downloadFailed = intercept[DatabaseDownloadFailed]{await(httpDatabaseFetch.fetchNow(testFile))}
+        downloadFailed.message must be(s"Wrong download mime type. Expected: ${MimeTypes.BINARY}, got: ${MimeTypes.CSS}.")
+      })
+
+      s"fail with DatabaseDownloadFailed exception if download not completes successfully" in withDbFileClient((httpDatabaseFetch: HttpDatabaseFetch, _: Int) => {
+        val downloadFailed = intercept[DatabaseDownloadFailed]{await(httpDatabaseFetch.fetchNow(testFile))}
+        downloadFailed.message must startWith(s"Download failed: Http error (404), Not Found. Details:")
+      })
+    }
+  }
+}

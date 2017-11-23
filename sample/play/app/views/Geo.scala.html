@@ -1,0 +1,18 @@
+@import com.maxmind.geoip2.model.CityResponse
+@this()
+
+@(ip: String, location: CityResponse, header: String)
+
+@main(header) {
+@if(location != null) {
+  <h2>some of data for @ip</h2>
+  <ul>
+    <li><strong>country code:</strong> @location.getCountry.getIsoCode</li>
+    <li><strong>country:</strong> @location.getCountry.getName</li>
+  </ul>
+  <p>Not there? <a href="http://www.maxmind.com/en/correction">tell it to MaxMind</a>.</p>
+  <p><a href="@routes.Application.index()">Back >>></a></p>
+} else {
+  <p>@header</p>
+}
+}

@@ -1,0 +1,10 @@
+@this()
+@(message: String)
+
+@main("Welcome to MaxMind GeoIp2DB demo") {
+
+  <h2>Nothing found</h2>
+  <p>Reason: @message</p>
+  <p>Know where is it? <a href="http://www.maxmind.com/en/correction">tell to MaxMind</a>.</p>
+  <p><a href="@routes.Application.index()">Back >>></a></p>
+}

@@ -1,0 +1,11 @@
+@this()
+
+@main("Welcome to MaxMind GeoIp2DB demo") {
+
+  <h2>Welcome to MaxMind GeoIp2DB demo</h2>
+  <p>Got some presets here:</p>
+  <ul>
+    <li>Try to <a href="@routes.GeoJava.getGeolocation("192.30.253.112")">locate 192.30.253.112</a> with Java</li>
+    <li>Try to <a href="@routes.GeoScala.getGeolocation("192.30.253.112")">locate 192.30.253.112</a> with Scala</li>
+  </ul>
+}
