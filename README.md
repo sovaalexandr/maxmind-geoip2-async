@@ -1,4 +1,5 @@
-#MaxMind GeoIP2 Java API Database plugin
+
+# MaxMind GeoIP2 Java API Database plugin
 
 [![Build Status](https://travis-ci.org/sovaalexandr/maxmind-geoip2-async.svg)](https://travis-ci.org/sovaalexandr/maxmind-geoip2-async)
 
