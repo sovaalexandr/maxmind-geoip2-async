@@ -26,7 +26,6 @@ val disableDocs = Seq[Setting[_]](
 
 val publishing = Seq(
   publishTo := Some(if (isSnapshot.value) Opts.resolver.sonatypeSnapshots else Opts.resolver.sonatypeStaging),
-  // otherwise same as orgname, and "sonatypeList" says "No staging profile is found for com.typesafe.play"
   sonatypeProfileName := "com.github.sovaalexandr",
   licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
   homepage := Some(url("https://github.com/sovaalexandr/maxmind-geoip2-async")),
