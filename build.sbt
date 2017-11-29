@@ -40,6 +40,7 @@ val publishing = Seq(
 )
 
 val disablePublishing = Seq[Setting[_]](
+  skip in publish := true,
   publishArtifact := false,
   // The above is enough for Maven repos but it doesn't prevent publishing of ivy.xml files
   publish := {},
