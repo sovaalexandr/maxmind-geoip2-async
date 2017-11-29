@@ -22,7 +22,7 @@ The first step is include the the dependency in your `build.sbt` file:
 ```scala
 scalaVersion := "2.12.4"
 
-libraryDependencies += "com.sovaalexandr" %% "maxmind-geoip2-async-guice" % "1.0.0-SNAPSHOT"
+libraryDependencies += "com.github.sovaalexandr" %% "maxmind-geoip2-async-guice" % "1.0.0"
 ```
 
 Module will be added automatically.
@@ -92,7 +92,7 @@ public class GeoJava extends Controller
 
     public CompletionStage<Result> getGeolocation(String address) {
         try {
-            return toJava(ask(geolocation, City.apply(InetAddress.getByName(address)), 5000L))
+            return ask(geolocation, City.apply(InetAddress.getByName(address)), 5000L)
                     .thenApply(location -> toResult(location, address))
                     .exceptionally(e -> badRequest(errorTemplate.render(e.getMessage())));
         } catch (UnknownHostException e) {
@@ -104,9 +104,9 @@ public class GeoJava extends Controller
     private Result toResult(Object response, String address) {
         if (response instanceof CityResponse) {
             return ok(geoTemplate.render(address, (CityResponse)response, "Got this one:"));
-        } if (response instanceof AddressNotFound) {
+        } if (response instanceof AddressNotFound$) {
             return notFound(errorTemplate.render("MaxMind don't know where is it"));
-        } if (response instanceof Idle) {
+        } if (response instanceof Idle$) {
             return internalServerError(errorTemplate.render("Geolocation is warming-up. Maybe after restart or there is a file renewal. Try a bit later."));
         }
 

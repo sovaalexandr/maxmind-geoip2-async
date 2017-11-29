@@ -1,4 +1,5 @@
 import sbt.Keys.testOptions
+import sbt.url
 
 name := "geolocation"
 
@@ -13,26 +14,6 @@ lazy val commonSettings = Seq(
   organization := "com.sovaalexandr",
   scalaVersion := "2.12.4",
   startYear := Some(2015),
-  pomExtra :=
-<url>https://github.com/sovaalexandr/maxmind-geoip2-async</url>
-<licenses>
-  <license>
-    <name>Apache License, Version 2.0</name>
-    <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-    <distribution>repo</distribution>
-  </license>
-</licenses>
-<scm>
-  <url>git@github.com:sovaalexandr/maxmind-geoip2-async.git</url>
-  <connection>scm:git:git@github.com:sovaalexandr/maxmind-geoip2-async.git</connection>
-</scm>
-<developers>
-  <developer>
-    <id>sovaalexandr</id>
-    <name>Oleksandr Sova</name>
-    <url>https://github.com/sovaalexandr</url>
-  </developer>
-</developers>,
   javacOptions in (Compile, doc) ++= javacSettings,
   javacOptions in Test ++= javacSettings,
   javacOptions in IntegrationTest ++= javacSettings
@@ -41,6 +22,21 @@ lazy val commonSettings = Seq(
 val disableDocs = Seq[Setting[_]](
   sources in (Compile, doc) := Seq.empty,
   publishArtifact in (Compile, packageDoc) := false
+)
+
+val publishing = Seq(
+  publishTo := Some(if (isSnapshot.value) Opts.resolver.sonatypeSnapshots else Opts.resolver.sonatypeStaging),
+  // otherwise same as orgname, and "sonatypeList" says "No staging profile is found for com.typesafe.play"
+  sonatypeProfileName := "com.github.sovaalexandr",
+  licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+  homepage := Some(url("https://github.com/sovaalexandr/maxmind-geoip2-async")),
+  scmInfo := Some(
+    ScmInfo(
+      url("https://github.com/sovaalexandr/maxmind-geoip2-async"),
+      "scm:git@github.com:sovaalexandr/maxmind-geoip2-async.git"
+    )
+  ),
+  developers := List(Developer(id="sovaalexandr", name="Oleksandr Sova", email="sovaalexandr@gmail.com", url=url("https://github.com/sovaalexandr")))
 )
 
 val disablePublishing = Seq[Setting[_]](
@@ -59,11 +55,13 @@ lazy val root = (project in file("."))
 lazy val `maxmind-geoip2-async` = (project in file("maxmind-geoip2-async"))
   .settings(libraryDependencies ++= Dependencies.all)
   .settings(libraryDependencies ++= TestDependencies.unit)
+  .settings(publishing)
   .settings(commonSettings)
 
 lazy val `maxmind-geoip2-async-guice` = (project in file("maxmind-geoip2-async-guice"))
   .settings(commonSettings)
   .settings(libraryDependencies += IntegrationDependencies.guice)
+  .settings(publishing)
   .dependsOn(`maxmind-geoip2-async`)
 
 lazy val `playframeworkExample` = (project in file("sample/play"))
@@ -88,3 +86,20 @@ lazy val `integration-tests` = (project in file("integration-tests"))
   .settings(disableDocs)
   .settings(disablePublishing)
   .dependsOn(`maxmind-geoip2-async` % "compile->compile;test->test")
+
+import sbtrelease.ReleasePlugin.autoImport.ReleaseTransformations._
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runClean,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  releaseStepCommand("publishSigned"),
+  setNextVersion,
+  commitNextVersion,
+  releaseStepCommand("sonatypeReleaseAll"),
+  pushChanges
+)
