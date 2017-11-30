@@ -11,7 +11,7 @@ val javacSettings = Seq(
 )
 
 lazy val commonSettings = Seq(
-  organization := "com.sovaalexandr",
+  organization := "com.github.sovaalexandr",
   scalaVersion := "2.12.4",
   startYear := Some(2015),
   javacOptions in (Compile, doc) ++= javacSettings,
@@ -26,7 +26,6 @@ val disableDocs = Seq[Setting[_]](
 
 val publishing = Seq(
   publishTo := Some(if (isSnapshot.value) Opts.resolver.sonatypeSnapshots else Opts.resolver.sonatypeStaging),
-  sonatypeProfileName := "com.github.sovaalexandr",
   licenses := Seq("APL2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
   homepage := Some(url("https://github.com/sovaalexandr/maxmind-geoip2-async")),
   scmInfo := Some(
