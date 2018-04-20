@@ -46,7 +46,13 @@ val disablePublishing = Seq[Setting[_]](
 )
 
 lazy val root = (project in file("."))
-  .aggregate(`maxmind-geoip2-async`, `maxmind-geoip2-async-guice`, `playframeworkExample`, `integration-tests`)
+  .aggregate(
+    `maxmind-geoip2-async`,
+    `maxmind-geoip2-async-guice`,
+    `maxmind-geoip2-async-compile-time-di`,
+    `playframeworkExample`,
+    `integration-tests`
+  )
   .settings(commonSettings)
   .settings(disableDocs)
   .settings(disablePublishing)
@@ -57,11 +63,16 @@ lazy val `maxmind-geoip2-async` = (project in file("maxmind-geoip2-async"))
   .settings(publishing)
   .settings(commonSettings)
 
+lazy val `maxmind-geoip2-async-compile-time-di` = (project in file("maxmind-geoip2-async-compile-time-di"))
+  .settings(commonSettings)
+  .settings(publishing)
+  .dependsOn(`maxmind-geoip2-async`)
+
 lazy val `maxmind-geoip2-async-guice` = (project in file("maxmind-geoip2-async-guice"))
   .settings(commonSettings)
   .settings(libraryDependencies += IntegrationDependencies.guice)
   .settings(publishing)
-  .dependsOn(`maxmind-geoip2-async`)
+  .dependsOn(`maxmind-geoip2-async-compile-time-di`)
 
 lazy val `playframeworkExample` = (project in file("sample/play"))
   .enablePlugins(PlayMinimalJava)
