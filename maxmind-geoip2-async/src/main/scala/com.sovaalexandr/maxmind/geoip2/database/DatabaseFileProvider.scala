@@ -13,8 +13,10 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 
 object DatabaseFileProvider {
-  def props(fetch: DatabaseFetch, actualizeTimeout: LocalDateTime => FiniteDuration, initialFile: File) =
-    Props(new DatabaseFileProvider(fetch, actualizeTimeout)(initialFile))
+  case class Settings(persistenceId: String)
+
+  def props(fetch: DatabaseFetch, actualizeTimeout: LocalDateTime => FiniteDuration, initialFile: File, settings: DatabaseFileProvider.Settings) =
+    Props(new DatabaseFileProvider(fetch, actualizeTimeout)(initialFile, settings))
 
   private[database] trait DatabaseFileState extends PersistentFSM.FSMState
   private[database] case object Outdated extends DatabaseFileState {
@@ -46,8 +48,8 @@ object DatabaseFileProvider {
  * @param actualizeTimeout - service to calculate how much time should pass till next DBFile update.
  * @param initialFile - initial place at filesystem where potential DBFile is. Location is also should be write-able.
  */
-class DatabaseFileProvider(fetch: DatabaseFetch, actualizeTimeout: LocalDateTime => FiniteDuration)(initialFile: File) extends PersistentFSM[DatabaseFileProvider.DatabaseFileState, DatabaseFileProvider.CurrentFile, DatabaseFileEvent] {
-  override def persistenceId: String = "maxmind.geoip2db.database"
+class DatabaseFileProvider(fetch: DatabaseFetch, actualizeTimeout: LocalDateTime => FiniteDuration)(initialFile: File, settings: DatabaseFileProvider.Settings) extends PersistentFSM[DatabaseFileProvider.DatabaseFileState, DatabaseFileProvider.CurrentFile, DatabaseFileEvent] {
+  override def persistenceId: String = settings.persistenceId
   import DatabaseFileProvider._
   private implicit val ec: ExecutionContextExecutor = context.dispatcher
 

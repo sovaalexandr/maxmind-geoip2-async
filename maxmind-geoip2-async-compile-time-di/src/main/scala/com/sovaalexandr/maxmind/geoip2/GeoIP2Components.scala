@@ -53,8 +53,11 @@ trait GeoIP2Components {
 
   protected def durationToFirstWednesdayOfNextMonth(): LocalDateTime => FiniteDuration = new DurationToFirstWednesdayOfNextMonth()
 
+  protected def databaseFileProviderSettings(configuration: Config): DatabaseFileProvider.Settings =
+    DatabaseFileProvider.Settings(configuration.getString("geolocation.geoip2db.databaseFileProviderPersistenceId"))
+
   protected def databaseFileProviderProps(fetch: DatabaseFetch, actualizeTimeout: LocalDateTime => FiniteDuration, file: File): Props =
-    DatabaseFileProvider.props(fetch, actualizeTimeout, file)
+    DatabaseFileProvider.props(fetch, actualizeTimeout, file, databaseFileProviderSettings(config))
 
   protected def databaseReaderProviderProps(configuration: Config): Props = {
     val locales = configuration.getStringList("play.i18n.langs")

@@ -47,6 +47,7 @@ geolocation {
       // Accepted options: GZIP, DEFLATE, NONE
       chunkSize = 64kB //${akka.stream.scaladsl.Compression.MaxBytesPerChunkDefault} - size of chunk to decompress. Set to AkkaStreams default.
     }
+    databaseFileProviderPersistenceId = "maxmind.geoip2db.database" // PersistenceId for DatabaseFileProvider actor. 
   }
 }
 ```

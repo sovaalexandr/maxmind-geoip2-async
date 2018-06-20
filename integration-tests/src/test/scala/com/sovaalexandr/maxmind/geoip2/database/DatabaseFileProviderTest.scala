@@ -37,6 +37,7 @@ class DatabaseFileProviderDoNotNeedActualizationTest(_system: ActorSystem) exten
   // Both should be Serializeable while Mockito mocks are not Serializeable.
   private val existingTestFile = new File(s"${System.getProperty("java.io.tmpdir")}/DatabaseFileProviderTest/GeoLite2-City.mmdb")
   private val existingChangedFile = new File(s"${System.getProperty("java.io.tmpdir")}/DatabaseFileProviderTest/GeoLite2-City.mmdb.someTestPrefix")
+  private val settings = DatabaseFileProvider.Settings("maxmind.geoip2db.database")
 
   "A DatabaseFileProvider" when {
     "do not need actualization" should {
@@ -49,7 +50,7 @@ class DatabaseFileProviderDoNotNeedActualizationTest(_system: ActorSystem) exten
 
       val probe = TestProbe("subscriber")
       system.eventStream.subscribe(probe.ref, classOf[DatabaseActualized])
-      system.actorOf(DatabaseFileProvider.props(fetch, actualizeAfter, existingTestFile))
+      system.actorOf(DatabaseFileProvider.props(fetch, actualizeAfter, existingTestFile, settings))
 
       "send NewFile notification when started" in {
         probe.expectMsgClass(classOf[DatabaseActualized])
@@ -90,6 +91,7 @@ class DatabaseFileProviderNeedsActualizationTest(_system: ActorSystem) extends T
   // Both should be Serializeable while Mockito mocks are not Serializeable.
   private val existingTestFile = new File(s"${System.getProperty("java.io.tmpdir")}/DatabaseFileProviderTest/GeoLite2-City.mmdb")
   private val existingChangedFile = new File(s"${System.getProperty("java.io.tmpdir")}/DatabaseFileProviderTest/GeoLite2-City.mmdb.someTestPrefix")
+  private val settings = DatabaseFileProvider.Settings("maxmind.geoip2db.database")
 
   "A DatabaseFileProvider" when {
     "needs actualization" should {
@@ -101,7 +103,7 @@ class DatabaseFileProviderNeedsActualizationTest(_system: ActorSystem) extends T
 
       val probe = TestProbe("subscriber")
       system.eventStream.subscribe(probe.ref, classOf[DatabaseActualized])
-      val actorRef = system.actorOf(DatabaseFileProvider.props(fetch, actualizeAfter, existingTestFile), "actor-under-test")
+      val actorRef = system.actorOf(DatabaseFileProvider.props(fetch, actualizeAfter, existingTestFile, settings), "actor-under-test")
 
       "provide different file after DatabaseActualized notification" in {
         system.eventStream.publish(FileConsumerAdded(probe.ref))
